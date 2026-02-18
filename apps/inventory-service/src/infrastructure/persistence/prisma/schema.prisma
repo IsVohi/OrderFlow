@@ -1,0 +1,100 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Inventory {
+  id                Int      @id @default(autoincrement())
+  productId         String   @unique @map("product_id")
+  sellerId          String   @map("seller_id")
+  name              String
+  description       String?
+  price             Decimal  @db.Decimal(10, 2)
+  imageUrl          String?  @map("image_url")
+  quantityAvailable Int      @default(0) @map("quantity_available")
+  quantityReserved  Int      @default(0) @map("quantity_reserved")
+  version           Int      @default(0)
+  warehouseId       String   @default("default") @map("warehouse_id")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@index([productId])
+  @@index([sellerId])
+  @@map("inventory")
+}
+
+model Reservation {
+  id        String            @id
+  orderId   String            @unique @map("order_id")
+  status    ReservationStatus @default(RESERVED)
+  expiresAt DateTime          @map("expires_at")
+  createdAt DateTime          @default(now()) @map("created_at")
+  updatedAt DateTime          @updatedAt @map("updated_at")
+
+  items ReservationItem[]
+
+  @@index([orderId])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("reservations")
+}
+
+model ReservationItem {
+  id                Int    @id @default(autoincrement())
+  reservationId     String @map("reservation_id")
+  productId         String @map("product_id")
+  quantityRequested Int    @map("quantity_requested")
+  quantityReserved  Int    @map("quantity_reserved")
+  warehouseId       String @map("warehouse_id")
+
+  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+
+  @@index([reservationId])
+  @@index([productId])
+  @@map("reservation_items")
+}
+
+enum ReservationStatus {
+  RESERVED
+  COMMITTED
+  RELEASED
+  EXPIRED
+}
+
+model Outbox {
+  id            Int       @id @default(autoincrement())
+  eventId       String    @unique @map("event_id")
+  eventType     String    @map("event_type")
+  aggregateType String    @map("aggregate_type")
+  aggregateId   String    @map("aggregate_id")
+  payload       Json
+  published     Boolean   @default(false)
+  publishedAt   DateTime? @map("published_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@index([published, createdAt])
+  @@index([eventId])
+  @@index([aggregateId])
+  @@map("outbox")
+}
+
+model ProcessedEvent {
+  id            Int      @id @default(autoincrement())
+  eventId       String   @unique @map("event_id")
+  eventType     String   @map("event_type")
+  consumerGroup String   @map("consumer_group")
+  partition     Int
+  offset        BigInt
+  processedAt   DateTime @default(now()) @map("processed_at")
+
+  @@unique([consumerGroup, partition, offset], name: "uq_partition_offset")
+  @@index([eventId])
+  @@index([consumerGroup, partition])
+  @@index([processedAt])
+  @@map("processed_events")
+}

@@ -1,0 +1,135 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://orderflow.io/schemas/events/payment-events.json",
+    "title": "OrderFlow Payment Events",
+    "description": "Kafka event schemas for payment.events topic",
+    "definitions": {
+        "BaseEvent": {
+            "type": "object",
+            "required": [
+                "eventId",
+                "eventType",
+                "orderId",
+                "correlationId",
+                "timestamp"
+            ],
+            "properties": {
+                "eventId": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "eventType": {
+                    "type": "string"
+                },
+                "orderId": {
+                    "type": "string"
+                },
+                "correlationId": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "timestamp": {
+                    "type": "string",
+                    "format": "date-time"
+                }
+            }
+        },
+        "PaymentCapturedEvent": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseEvent"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "eventType": {
+                            "const": "PaymentCaptured"
+                        },
+                        "payload": {
+                            "type": "object",
+                            "required": [
+                                "paymentId",
+                                "amount"
+                            ],
+                            "properties": {
+                                "paymentId": {
+                                    "type": "string",
+                                    "description": "Payment record ID"
+                                },
+                                "amount": {
+                                    "type": "number",
+                                    "description": "Captured amount"
+                                },
+                                "currency": {
+                                    "type": "string",
+                                    "default": "USD"
+                                },
+                                "gatewayTransactionId": {
+                                    "type": "string",
+                                    "description": "External gateway reference (mock)"
+                                },
+                                "capturedAt": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                }
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "PaymentFailedEvent": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseEvent"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "eventType": {
+                            "const": "PaymentFailed"
+                        },
+                        "payload": {
+                            "type": "object",
+                            "required": [
+                                "paymentId",
+                                "reason"
+                            ],
+                            "properties": {
+                                "paymentId": {
+                                    "type": "string"
+                                },
+                                "reason": {
+                                    "type": "string",
+                                    "enum": [
+                                        "INSUFFICIENT_FUNDS",
+                                        "CARD_DECLINED",
+                                        "GATEWAY_ERROR",
+                                        "CHAOS_INJECTION"
+                                    ],
+                                    "description": "Failure reason code"
+                                },
+                                "message": {
+                                    "type": "string",
+                                    "description": "Human-readable failure message"
+                                },
+                                "failedAt": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                }
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+    },
+    "oneOf": [
+        {
+            "$ref": "#/definitions/PaymentCapturedEvent"
+        },
+        {
+            "$ref": "#/definitions/PaymentFailedEvent"
+        }
+    ]
+}

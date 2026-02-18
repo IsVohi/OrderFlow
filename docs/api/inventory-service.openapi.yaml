@@ -1,0 +1,251 @@
+openapi: 3.0.3
+info:
+  title: OrderFlow - Inventory Service API
+  version: 1.0.0
+  description: |
+    Stock management and inventory reservation for the OrderFlow distributed system.
+    
+    ## Saga Participation
+    Inventory Service participates in saga choreography:
+    - Listens for `OrderCreated` events
+    - Reserves stock and publishes `InventoryReserved` event
+    - Listens for `PaymentFailed` events
+    - Releases reservation and publishes `InventoryReleased` event (compensation)
+
+servers:
+  - url: http://localhost:3002
+    description: Local development
+
+paths:
+  /api/products:
+    get:
+      operationId: listProducts
+      summary: List products
+      description: Retrieve a list of products with current stock levels.
+      tags:
+        - Products
+      parameters:
+        - name: sellerId
+          in: query
+          description: Filter by seller ID
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of products
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  products:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Product'
+
+    post:
+      operationId: createProduct
+      summary: Create a new product
+      tags:
+        - Products
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProductRequest'
+      responses:
+        '201':
+          description: Product created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+
+  /api/products/{productId}:
+    get:
+      operationId: getProduct
+      summary: Get product by ID
+      tags:
+        - Products
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Product details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '404':
+          description: Product not found
+
+    patch:
+      operationId: updateStock
+      summary: Update product stock
+      description: Manually adjust stock levels (for seller use).
+      tags:
+        - Products
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                quantity:
+                  type: integer
+                  description: New stock quantity
+      responses:
+        '200':
+          description: Stock updated
+
+  /api/reservations:
+    get:
+      operationId: listReservations
+      summary: List reservations
+      description: Retrieve active inventory reservations.
+      tags:
+        - Reservations
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - RESERVED
+              - COMMITTED
+              - RELEASED
+              - EXPIRED
+        - name: orderId
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of reservations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reservations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Reservation'
+
+  /api/health:
+    get:
+      operationId: healthCheck
+      summary: Health check
+      tags:
+        - System
+      responses:
+        '200':
+          description: Service is healthy
+
+components:
+  schemas:
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "prod_laptop"
+        name:
+          type: string
+          example: "MacBook Pro 14\""
+        sellerId:
+          type: string
+          example: "seller_tech"
+        price:
+          type: number
+          example: 1999.00
+        stockQuantity:
+          type: integer
+          description: Current available stock
+          example: 50
+        reservedQuantity:
+          type: integer
+          description: Stock currently reserved for pending orders
+          example: 5
+
+    CreateProductRequest:
+      type: object
+      required:
+        - name
+        - sellerId
+        - price
+        - stockQuantity
+      properties:
+        name:
+          type: string
+        sellerId:
+          type: string
+        price:
+          type: number
+        stockQuantity:
+          type: integer
+          minimum: 0
+
+    Reservation:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "res_001"
+        orderId:
+          type: string
+          example: "ord_xyz789"
+        productId:
+          type: string
+          example: "prod_laptop"
+        quantity:
+          type: integer
+          example: 2
+        status:
+          $ref: '#/components/schemas/ReservationStatus'
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+          description: Reservation timeout (releases if payment not received)
+
+    ReservationStatus:
+      type: string
+      enum:
+        - RESERVED
+        - COMMITTED
+        - RELEASED
+        - EXPIRED
+      description: |
+        Reservation lifecycle:
+        - RESERVED: Stock locked, awaiting payment confirmation
+        - COMMITTED: Payment successful, stock deducted permanently
+        - RELEASED: Payment failed, stock returned (compensation)
+        - EXPIRED: Reservation timed out, stock returned
+
+tags:
+  - name: Products
+    description: Product and stock management
+  - name: Reservations
+    description: Inventory reservations from orders
+  - name: System
+    description: System health and status

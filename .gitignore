@@ -1,0 +1,70 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+.next/
+out/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+coverage/
+.nyc_output/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Prisma
+*.db
+*.db-journal
+**/prisma/migrations/**/migration.sql
+
+# Docker
+docker-compose.override.yml
+
+# Process IDs and runtime
+.pids/
+*.pid
+
+# Temporary files
+tmp/
+temp/
+.cache/
+
+# Project-specific
+project-report.md
+
+# TypeScript
+*.tsbuildinfo
+
+# Next.js
+.next/
+out/
+.vercel
+
+# Prisma generated client (should be gitignored per service)
+apps/*/node_modules/.prisma/
+packages/*/node_modules/.prisma/

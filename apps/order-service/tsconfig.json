@@ -1,0 +1,33 @@
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "outDir": "./dist",
+        "noEmit": false,
+        "rootDir": "./src",
+        "baseUrl": "./",
+        "paths": {
+            "@orderflow/common": [
+                "../../packages/common"
+            ],
+            "@orderflow/event-contracts": [
+                "../../packages/event-contracts"
+            ],
+            "@orderflow/logger": [
+                "../../packages/logger"
+            ]
+        },
+        "composite": false
+    },
+    "include": [
+        "src/**/*"
+    ],
+    "files": [
+        "src/main.ts"
+    ],
+    "exclude": [
+        "node_modules",
+        "dist",
+        "test",
+        "**/*spec.ts"
+    ]
+}

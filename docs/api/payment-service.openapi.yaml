@@ -1,0 +1,149 @@
+openapi: 3.0.3
+info:
+  title: OrderFlow - Payment Service API
+  version: 1.0.0
+  description: |
+    Payment processing for the OrderFlow distributed system.
+    
+    ## Mock Implementation
+    ⚠️ Payment gateway integration is simulated for demonstration.
+    Production would integrate with Stripe, PayPal, or similar.
+    
+    ## Saga Participation
+    Payment Service participates in saga choreography:
+    - Listens for `InventoryReserved` events
+    - Captures payment and publishes `PaymentCaptured` event
+    - On failure, publishes `PaymentFailed` event (triggers compensation)
+    
+    ## Chaos Testing
+    Supports failure injection via environment variables:
+    - `CHAOS_ENABLED=true` - Enable chaos testing
+    - `CHAOS_FAILURE_RATE=0.3` - 30% of payments fail
+
+servers:
+  - url: http://localhost:3003
+    description: Local development
+
+paths:
+  /api/payments:
+    get:
+      operationId: listPayments
+      summary: List payments
+      description: Retrieve a list of payment records.
+      tags:
+        - Payments
+      parameters:
+        - name: orderId
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - PENDING
+              - CAPTURED
+              - FAILED
+              - REFUNDED
+      responses:
+        '200':
+          description: List of payments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  payments:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Payment'
+
+  /api/payments/{paymentId}:
+    get:
+      operationId: getPayment
+      summary: Get payment by ID
+      tags:
+        - Payments
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Payment details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+        '404':
+          description: Payment not found
+
+  /api/health:
+    get:
+      operationId: healthCheck
+      summary: Health check
+      tags:
+        - System
+      responses:
+        '200':
+          description: Service is healthy
+
+components:
+  schemas:
+    Payment:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "pay_abc123"
+        orderId:
+          type: string
+          example: "ord_xyz789"
+        amount:
+          type: number
+          description: Payment amount in cents
+          example: 3998.00
+        currency:
+          type: string
+          example: "USD"
+        status:
+          $ref: '#/components/schemas/PaymentStatus'
+        gatewayTransactionId:
+          type: string
+          description: External payment gateway reference (mock)
+          example: "txn_mock_12345"
+        failureReason:
+          type: string
+          nullable: true
+          description: Reason for payment failure, if applicable
+          example: "Insufficient funds"
+        capturedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    PaymentStatus:
+      type: string
+      enum:
+        - PENDING
+        - CAPTURED
+        - FAILED
+        - REFUNDED
+      description: |
+        Payment lifecycle:
+        - PENDING: Payment initiated, processing
+        - CAPTURED: Payment successful
+        - FAILED: Payment failed (triggers saga compensation)
+        - REFUNDED: Payment reversed (not currently implemented)
+
+tags:
+  - name: Payments
+    description: Payment records
+  - name: System
+    description: System health and status

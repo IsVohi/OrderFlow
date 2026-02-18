@@ -1,0 +1,42 @@
+{
+    "compilerOptions": {
+        "target": "ES2022",
+        "module": "commonjs",
+        "lib": [
+            "ES2022"
+        ],
+        "declaration": true,
+        "declarationMap": true,
+        "sourceMap": true,
+        "outDir": "./dist",
+        "rootDir": "./src",
+        "removeComments": true,
+        "composite": true,
+        "incremental": true,
+        "esModuleInterop": true,
+        "forceConsistentCasingInFileNames": true,
+        "strict": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "noImplicitReturns": true,
+        "noFallthroughCasesInSwitch": true,
+        "skipLibCheck": true,
+        "resolveJsonModule": true,
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true,
+        "strictPropertyInitialization": false,
+        "noEmit": false,
+        "baseUrl": ".",
+        "paths": {
+            "@prisma/client-inventory": [
+                "node_modules/@prisma/client-inventory"
+            ]
+        }
+    },
+    "exclude": [
+        "node_modules",
+        "dist",
+        "test",
+        "**/*.spec.ts"
+    ]
+}

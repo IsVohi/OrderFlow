@@ -1,0 +1,175 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://orderflow.io/schemas/events/order-events.json",
+    "title": "OrderFlow Order Events",
+    "description": "Kafka event schemas for order.events topic",
+    "definitions": {
+        "BaseEvent": {
+            "type": "object",
+            "required": [
+                "eventId",
+                "eventType",
+                "orderId",
+                "correlationId",
+                "timestamp"
+            ],
+            "properties": {
+                "eventId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "Unique event identifier"
+                },
+                "eventType": {
+                    "type": "string",
+                    "description": "Event type discriminator"
+                },
+                "orderId": {
+                    "type": "string",
+                    "description": "Associated order ID"
+                },
+                "correlationId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "Correlation ID for distributed tracing"
+                },
+                "timestamp": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Event timestamp (ISO 8601)"
+                }
+            }
+        },
+        "OrderCreatedEvent": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseEvent"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "eventType": {
+                            "const": "OrderCreated"
+                        },
+                        "payload": {
+                            "type": "object",
+                            "required": [
+                                "customerId",
+                                "sellerId",
+                                "items",
+                                "totalAmount"
+                            ],
+                            "properties": {
+                                "customerId": {
+                                    "type": "string"
+                                },
+                                "sellerId": {
+                                    "type": "string"
+                                },
+                                "items": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "productId": {
+                                                "type": "string"
+                                            },
+                                            "quantity": {
+                                                "type": "integer",
+                                                "minimum": 1
+                                            },
+                                            "unitPrice": {
+                                                "type": "number"
+                                            }
+                                        }
+                                    }
+                                },
+                                "totalAmount": {
+                                    "type": "number"
+                                },
+                                "shippingAddress": {
+                                    "type": "object",
+                                    "properties": {
+                                        "street": {
+                                            "type": "string"
+                                        },
+                                        "city": {
+                                            "type": "string"
+                                        },
+                                        "country": {
+                                            "type": "string"
+                                        },
+                                        "postalCode": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "OrderFulfilledEvent": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseEvent"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "eventType": {
+                            "const": "OrderFulfilled"
+                        },
+                        "payload": {
+                            "type": "object",
+                            "properties": {
+                                "fulfilledAt": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                }
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "OrderCancelledEvent": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseEvent"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "eventType": {
+                            "const": "OrderCancelled"
+                        },
+                        "payload": {
+                            "type": "object",
+                            "properties": {
+                                "reason": {
+                                    "type": "string"
+                                },
+                                "cancelledAt": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                }
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+    },
+    "oneOf": [
+        {
+            "$ref": "#/definitions/OrderCreatedEvent"
+        },
+        {
+            "$ref": "#/definitions/OrderFulfilledEvent"
+        },
+        {
+            "$ref": "#/definitions/OrderCancelledEvent"
+        }
+    ]
+}

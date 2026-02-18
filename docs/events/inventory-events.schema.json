@@ -1,0 +1,196 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://orderflow.io/schemas/events/inventory-events.json",
+    "title": "OrderFlow Inventory Events",
+    "description": "Kafka event schemas for inventory.events topic",
+    "definitions": {
+        "BaseEvent": {
+            "type": "object",
+            "required": [
+                "eventId",
+                "eventType",
+                "orderId",
+                "correlationId",
+                "timestamp"
+            ],
+            "properties": {
+                "eventId": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "eventType": {
+                    "type": "string"
+                },
+                "orderId": {
+                    "type": "string"
+                },
+                "correlationId": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "timestamp": {
+                    "type": "string",
+                    "format": "date-time"
+                }
+            }
+        },
+        "InventoryReservedEvent": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseEvent"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "eventType": {
+                            "const": "InventoryReserved"
+                        },
+                        "payload": {
+                            "type": "object",
+                            "required": [
+                                "reservationId",
+                                "items"
+                            ],
+                            "properties": {
+                                "reservationId": {
+                                    "type": "string",
+                                    "description": "Unique reservation identifier"
+                                },
+                                "items": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "productId": {
+                                                "type": "string"
+                                            },
+                                            "quantity": {
+                                                "type": "integer"
+                                            },
+                                            "reservedQuantity": {
+                                                "type": "integer"
+                                            }
+                                        }
+                                    }
+                                },
+                                "expiresAt": {
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "description": "Reservation expiry time"
+                                }
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "InventoryReleasedEvent": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseEvent"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "eventType": {
+                            "const": "InventoryReleased"
+                        },
+                        "payload": {
+                            "type": "object",
+                            "required": [
+                                "reservationId",
+                                "reason"
+                            ],
+                            "properties": {
+                                "reservationId": {
+                                    "type": "string"
+                                },
+                                "reason": {
+                                    "type": "string",
+                                    "enum": [
+                                        "PAYMENT_FAILED",
+                                        "RESERVATION_EXPIRED",
+                                        "ORDER_CANCELLED"
+                                    ]
+                                },
+                                "releasedItems": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "productId": {
+                                                "type": "string"
+                                            },
+                                            "quantity": {
+                                                "type": "integer"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "ReservationFailedEvent": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/BaseEvent"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "eventType": {
+                            "const": "ReservationFailed"
+                        },
+                        "payload": {
+                            "type": "object",
+                            "required": [
+                                "reason"
+                            ],
+                            "properties": {
+                                "reason": {
+                                    "type": "string",
+                                    "enum": [
+                                        "INSUFFICIENT_STOCK",
+                                        "PRODUCT_NOT_FOUND",
+                                        "SELLER_UNAVAILABLE"
+                                    ]
+                                },
+                                "failedItems": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "productId": {
+                                                "type": "string"
+                                            },
+                                            "requestedQuantity": {
+                                                "type": "integer"
+                                            },
+                                            "availableQuantity": {
+                                                "type": "integer"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+    },
+    "oneOf": [
+        {
+            "$ref": "#/definitions/InventoryReservedEvent"
+        },
+        {
+            "$ref": "#/definitions/InventoryReleasedEvent"
+        },
+        {
+            "$ref": "#/definitions/ReservationFailedEvent"
+        }
+    ]
+}

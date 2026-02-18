@@ -1,0 +1,75 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Payment {
+  id                   String        @id
+  orderId              String        @unique @map("order_id")
+  amount               Decimal       @db.Decimal(10, 2)
+  currency             String        @default("USD")
+  status               PaymentStatus @default(PENDING)
+  paymentMethodType    String?       @map("payment_method_type")
+  paymentMethodLast4   String?       @map("payment_method_last4")
+  paymentMethodBrand   String?       @map("payment_method_brand")
+  gatewayProvider      String        @default("mock") @map("gateway_provider")
+  transactionId        String?       @map("transaction_id")
+  gatewayTransactionId String?       @map("gateway_transaction_id")
+  authorizationCode    String?       @map("authorization_code")
+  processingFee        Decimal?      @map("processing_fee") @db.Decimal(10, 2)
+  idempotencyKey       String        @unique @map("idempotency_key")
+  failureReason        String?       @map("failure_reason")
+  failureCode          String?       @map("failure_code")
+  attemptCount         Int           @default(0) @map("attempt_count")
+  createdAt            DateTime      @default(now()) @map("created_at")
+  updatedAt            DateTime      @updatedAt @map("updated_at")
+  capturedAt           DateTime?     @map("captured_at")
+  failedAt             DateTime?     @map("failed_at")
+  refundedAt           DateTime?     @map("refunded_at")
+
+  @@index([orderId])
+  @@index([status])
+  @@index([idempotencyKey])
+  @@index([createdAt])
+  @@map("payments")
+}
+
+model Outbox {
+  id            Int       @id @default(autoincrement())
+  eventId       String    @unique @map("event_id")
+  eventType     String    @map("event_type")
+  aggregateType String    @map("aggregate_type")
+  aggregateId   String    @map("aggregate_id")
+  payload       Json
+  published     Boolean   @default(false)
+  publishedAt   DateTime? @map("published_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@index([published, createdAt])
+  @@index([eventId])
+  @@index([aggregateId])
+  @@map("outbox")
+}
+
+model ProcessedEvent {
+  eventId     String   @id @map("event_id")
+  eventType   String   @map("event_type")
+  processedAt DateTime @default(now()) @map("processed_at")
+
+  @@index([processedAt])
+  @@map("processed_events")
+}
+
+enum PaymentStatus {
+  PENDING
+  AUTHORIZED
+  CAPTURED
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}

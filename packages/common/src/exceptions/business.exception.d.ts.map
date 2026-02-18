@@ -1,0 +1,1 @@
+{"version":3,"file":"business.exception.d.ts","sourceRoot":"","sources":["business.exception.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,aAAa,EAAE,MAAM,kBAAkB,CAAC;AAEjD,qBAAa,iBAAkB,SAAQ,aAAa;gBAE5C,OAAO,EAAE,MAAM,EACf,IAAI,EAAE,MAAM,EACZ,UAAU,SAAM,EAChB,OAAO,CAAC,EAAE,MAAM,CAAC,MAAM,EAAE,GAAG,CAAC;CAIpC"}

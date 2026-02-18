@@ -1,0 +1,360 @@
+openapi: 3.0.3
+info:
+  title: OrderFlow - Order Service API
+  version: 1.0.0
+  description: |
+    Order management and saga initiation for the OrderFlow distributed system.
+    
+    ## Authentication
+    ⚠️ **Note:** Authentication is currently mocked for demonstration purposes.
+    Production would use Keycloak/Cognito with JWT validation middleware.
+    
+    ## Saga Choreography
+    Creating an order initiates a choreography-based saga:
+    1. Order Service publishes `OrderCreated` event
+    2. Inventory Service reacts and publishes `InventoryReserved`
+    3. Payment Service reacts and publishes `PaymentCaptured` or `PaymentFailed`
+    4. Compensation flows are triggered by failure events
+
+servers:
+  - url: http://localhost:3001
+    description: Local development
+
+paths:
+  /api/orders:
+    post:
+      operationId: createOrder
+      summary: Create a new order
+      description: |
+        Initiates the order saga by creating an order and publishing an OrderCreated event.
+        This triggers the choreography flow through Inventory and Payment services.
+      tags:
+        - Orders
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+            example:
+              customerId: "cust_abc123"
+              sellerId: "seller_tech"
+              items:
+                - productId: "prod_laptop"
+                  quantity: 2
+                  unitPrice: 1999.00
+              shippingAddress:
+                street: "123 Main St"
+                city: "San Francisco"
+                country: "United States"
+                postalCode: "94102"
+      responses:
+        '201':
+          description: Order created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+
+    get:
+      operationId: listOrders
+      summary: List orders
+      description: Retrieve a paginated list of orders with optional filtering.
+      tags:
+        - Orders
+      parameters:
+        - name: status
+          in: query
+          description: Filter by order status
+          schema:
+            type: string
+            enum:
+              - CREATED
+              - INVENTORY_RESERVED
+              - PAYMENT_CAPTURED
+              - FULFILLED
+              - CANCELLED
+        - name: customerId
+          in: query
+          description: Filter by customer ID
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Maximum number of orders to return
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+        - name: offset
+          in: query
+          description: Number of orders to skip
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+      responses:
+        '200':
+          description: List of orders
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  orders:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/OrderSummary'
+                  total:
+                    type: integer
+                    description: Total number of orders matching filters
+
+  /api/orders/{orderId}:
+    get:
+      operationId: getOrder
+      summary: Get order by ID
+      description: Retrieve detailed order information including saga event history.
+      tags:
+        - Orders
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          description: Unique order identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Order details with event history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '404':
+          description: Order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/health:
+    get:
+      operationId: healthCheck
+      summary: Health check
+      description: Returns service health status.
+      tags:
+        - System
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "healthy"
+                  timestamp:
+                    type: string
+                    format: date-time
+
+components:
+  schemas:
+    CreateOrderRequest:
+      type: object
+      required:
+        - customerId
+        - sellerId
+        - items
+        - shippingAddress
+      properties:
+        customerId:
+          type: string
+          description: Customer placing the order
+          example: "cust_abc123"
+        sellerId:
+          type: string
+          description: Seller fulfilling the order
+          example: "seller_tech"
+        items:
+          type: array
+          description: List of items to order
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/OrderItem'
+        shippingAddress:
+          $ref: '#/components/schemas/Address'
+
+    OrderItem:
+      type: object
+      required:
+        - productId
+        - quantity
+        - unitPrice
+      properties:
+        productId:
+          type: string
+          description: Product identifier
+          example: "prod_laptop"
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 100
+          description: Number of items
+          example: 2
+        unitPrice:
+          type: number
+          format: float
+          description: Price per unit in cents
+          example: 1999.00
+
+    Address:
+      type: object
+      required:
+        - street
+        - city
+        - country
+        - postalCode
+      properties:
+        street:
+          type: string
+          example: "123 Main St"
+        city:
+          type: string
+          example: "San Francisco"
+        country:
+          type: string
+          example: "United States"
+        postalCode:
+          type: string
+          example: "94102"
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique order identifier
+          example: "ord_xyz789"
+        status:
+          $ref: '#/components/schemas/OrderStatus'
+        customerId:
+          type: string
+          example: "cust_abc123"
+        sellerId:
+          type: string
+          example: "seller_tech"
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+        shippingAddress:
+          $ref: '#/components/schemas/Address'
+        totalAmount:
+          type: number
+          format: float
+          description: Total order amount
+          example: 3998.00
+        correlationId:
+          type: string
+          format: uuid
+          description: Correlation ID for distributed tracing
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        events:
+          type: array
+          description: Audit log of saga events (not event sourcing)
+          items:
+            $ref: '#/components/schemas/OrderEvent'
+
+    OrderSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          $ref: '#/components/schemas/OrderStatus'
+        customerId:
+          type: string
+        totalAmount:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+
+    OrderStatus:
+      type: string
+      enum:
+        - CREATED
+        - INVENTORY_RESERVED
+        - PAYMENT_CAPTURED
+        - FULFILLED
+        - CANCELLED
+      description: |
+        Order lifecycle states:
+        - CREATED: Order initiated, awaiting inventory reservation
+        - INVENTORY_RESERVED: Stock locked, awaiting payment
+        - PAYMENT_CAPTURED: Payment successful, awaiting fulfillment
+        - FULFILLED: Order completed successfully
+        - CANCELLED: Order cancelled (compensation completed)
+
+    OrderEvent:
+      type: object
+      description: Audit log entry (NOT event sourcing - state is stored directly)
+      properties:
+        type:
+          type: string
+          enum:
+            - OrderCreated
+            - InventoryReserved
+            - PaymentCaptured
+            - OrderFulfilled
+            - PaymentFailed
+            - InventoryReleased
+            - OrderCancelled
+        timestamp:
+          type: string
+          format: date-time
+        data:
+          type: object
+          additionalProperties: true
+          description: Event-specific payload
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          example: "VALIDATION_ERROR"
+        message:
+          type: string
+          example: "Invalid request data"
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+
+tags:
+  - name: Orders
+    description: Order management endpoints
+  - name: System
+    description: System health and status
